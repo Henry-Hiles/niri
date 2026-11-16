@@ -124,6 +124,7 @@ pub struct Overview {
     pub backdrop_color: Color,
     pub workspace_shadow: WorkspaceShadow,
     pub swipe_to_close: bool,
+    pub swipe_down_to_exit: bool,
 }
 
 impl Default for Overview {
@@ -133,6 +134,7 @@ impl Default for Overview {
             backdrop_color: DEFAULT_BACKDROP_COLOR,
             workspace_shadow: WorkspaceShadow::default(),
             swipe_to_close: false,
+            swipe_down_to_exit: false,
         }
     }
 }
@@ -147,13 +149,15 @@ pub struct OverviewPart {
     pub workspace_shadow: Option<WorkspaceShadowPart>,
     #[knuffel(child)]
     pub swipe_to_close: Option<Flag>,
+    #[knuffel(child)]
+    pub swipe_down_to_exit: Option<Flag>,
 }
 
 impl MergeWith<OverviewPart> for Overview {
     fn merge_with(&mut self, part: &OverviewPart) {
         merge!((self, part), zoom, workspace_shadow);
         merge_clone!((self, part), backdrop_color);
-        merge!((self, part), swipe_to_close);
+        merge!((self, part), swipe_to_close, swipe_down_to_exit);
     }
 }
 

@@ -37,6 +37,7 @@ overview {
     }
 
     // swipe-to-close
+    // swipe-down-to-exit
 }
 
 xwayland-satellite {
@@ -263,6 +264,22 @@ When this is off, swiping up on a window switches workspaces, same as swiping up
 ```kdl
 overview {
     swipe-to-close
+}
+```
+
+#### `swipe-down-to-exit`
+
+<sup>Since: next release</sup>
+
+Close the overview by swiping down anywhere in it on a touchscreen.
+The overview closes following the finger, and moving sideways scrolls between windows at the same time, so you can pick which window to land on.
+Releasing early or flicking back up keeps the overview open.
+
+When this is off, or on a workspace without windows, swiping down switches workspaces.
+
+```kdl
+overview {
+    swipe-down-to-exit
 }
 ```
 
