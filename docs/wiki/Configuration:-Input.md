@@ -100,6 +100,7 @@ input {
         // off
         map-to-output "eDP-1"
         // calibration-matrix 1.0 0.0 0.0 0.0 1.0 0.0
+        // edge-swipe-size 24
     }
 
     // disable-power-key-handling
@@ -298,6 +299,13 @@ Falls back to those when no window is focused (for example, in the overview).
 
     When the tablet is also mapped to a specific output via `map-to-output`, the `map-to-focused-window` flag will map the tablet to the active window on that output.
     If the tablet isn't mapped to any specific output, it will map the tablet to the current focused window regardless of where it is.
+
+Settings specific to `touch`:
+
+- `edge-swipe-size`: <sup>Since: next release</sup> height in logical pixels of a zone along the bottom edge of the screen.
+A one-finger swipe starting in this zone opens the overview when moving up and scrolls between windows when moving sideways, and can do both at the same time.
+Touches starting in the zone still go to windows, so taps near the edge work as usual; once a swipe up or sideways is recognized, the touch is taken away from the window.
+Unset by default, which disables the gesture.
 
 ### General Settings
 
