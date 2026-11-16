@@ -3873,6 +3873,34 @@ impl Niri {
         let layer_toplevel_under = |layer| layer_surface_under(layer, false);
         let layer_popup_under = |layer| layer_surface_under(layer, true);
 
+        // Backdrop surfaces with the backdrop-input rule.
+        let backdrop_layer_under = |layer| {
+            layers
+                .layers_on(layer)
+                .rev()
+                .find_map(|layer_surface| {
+                    let mapped = self.mapped_layer_surfaces.get(layer_surface)?;
+                    if !mapped.place_within_backdrop() || !mapped.rules().backdrop_input {
+                        return None;
+                    }
+
+                    let layer_pos_within_output =
+                        layers.layer_geometry(layer_surface).unwrap().loc.to_f64();
+                    layer_surface
+                        .surface_under(
+                            pos_within_output - layer_pos_within_output,
+                            WindowSurfaceType::ALL,
+                        )
+                        .map(|(surface, pos_within_layer)| {
+                            (
+                                (surface, pos_within_layer.to_f64() + layer_pos_within_output),
+                                layer_surface,
+                            )
+                        })
+                })
+                .map(|(s, l)| (Some(s), (None, Some(l.clone()))))
+        };
+
         let mapped_hit_data = |(mapped, hit): (&Mapped, HitType)| {
             let window = &mapped.window;
             let surface_and_pos = if let HitType::Input { win_pos } = hit {
@@ -3945,6 +3973,12 @@ impl Niri {
                 under = under
                     .or_else(|| layer_toplevel_under(Layer::Bottom))
                     .or_else(|| layer_toplevel_under(Layer::Background));
+            } else if under.is_none() && mon.workspace_under_narrow(pos_within_output).is_none() {
+                under = backdrop_layer_under(Layer::Bottom)
+                    .or_else(|| backdrop_layer_under(Layer::Background));
+                if under.is_some() {
+                    rv.overview = false;
+                }
             }
         }
 
@@ -5045,7 +5079,9 @@ impl Niri {
         mon.render_workspace_shadows(ctx.renderer, &mut |elem| push(elem.into()));
 
         // Then the backdrop.
+        push_popups_from_layer!(Layer::Bottom, true);
         push_popups_from_layer!(Layer::Background, true);
+        push_normal_from_layer!(Layer::Bottom, true);
         push_normal_from_layer!(Layer::Background, true);
 
         push(backdrop);

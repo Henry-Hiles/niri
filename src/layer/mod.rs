@@ -25,6 +25,9 @@ pub struct ResolvedLayerRules {
     /// Whether to place this layer surface within the overview backdrop.
     pub place_within_backdrop: bool,
 
+    /// Whether this layer surface gets input in the overview while placed within the backdrop.
+    pub backdrop_input: bool,
+
     /// Whether to focus this layer surface when typing in the overview.
     pub focus_on_type_in_overview: bool,
 
@@ -74,6 +77,9 @@ impl ResolvedLayerRules {
             }
             if let Some(x) = rule.place_within_backdrop {
                 resolved.place_within_backdrop = x;
+            }
+            if let Some(x) = rule.backdrop_input {
+                resolved.backdrop_input = x;
             }
             if let Some(x) = rule.focus_on_type_in_overview {
                 resolved.focus_on_type_in_overview = x;

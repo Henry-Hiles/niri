@@ -162,7 +162,7 @@ impl MappedLayer {
             return false;
         }
 
-        if self.surface.layer() != Layer::Background {
+        if !matches!(self.surface.layer(), Layer::Background | Layer::Bottom) {
             return false;
         }
 
