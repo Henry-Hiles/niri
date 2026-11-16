@@ -2216,6 +2216,7 @@ mod tests {
                         a: 0.3137255,
                     },
                 },
+                open_when_empty: false,
             },
             environment: Environment(
                 [

@@ -257,6 +257,7 @@ pub struct Niri {
     // Each workspace corresponds to a Space. Each workspace generally has one Output mapped to it,
     // however it may have none (when there are no outputs connected) or multiple (when mirroring).
     pub layout: Layout<Mapped>,
+    pub active_workspace_was_empty: bool,
 
     // This space does not actually contain any windows, but all outputs are mapped into it
     // according to their global position.
@@ -891,6 +892,7 @@ impl State {
 
         // Needs to be called after updating the keyboard focus.
         self.niri.refresh_layout();
+        self.niri.refresh_overview_open_when_empty();
 
         self.niri.cursor_manager.check_cursor_image_surface_alive();
         self.niri.refresh_pointer_outputs();
@@ -2904,6 +2906,7 @@ impl Niri {
             clock: animation_clock,
 
             layout,
+            active_workspace_was_empty: false,
             global_space: Space::default(),
             sorted_outputs: Vec::default(),
             output_state: HashMap::new(),
@@ -4553,6 +4556,24 @@ impl Niri {
         };
 
         self.layout.refresh(layout_is_active);
+    }
+
+    /// Opens the overview when the active workspace becomes empty, if configured.
+    pub fn refresh_overview_open_when_empty(&mut self) {
+        let is_empty = self
+            .layout
+            .active_workspace()
+            .is_some_and(|ws| !ws.has_windows());
+        // Only on the change, so closing the overview on an empty workspace keeps it closed.
+        let became_empty = is_empty && !self.active_workspace_was_empty;
+        self.active_workspace_was_empty = is_empty;
+
+        if became_empty
+            && self.config.borrow().overview.open_when_empty
+            && self.layout.open_overview()
+        {
+            self.queue_redraw_all();
+        }
     }
 
     pub fn refresh_idle_inhibit(&mut self) {
