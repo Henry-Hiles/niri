@@ -2216,6 +2216,7 @@ mod tests {
                         a: 0.3137255,
                     },
                 },
+                hide_inactive_workspaces: false,
             },
             environment: Environment(
                 [
