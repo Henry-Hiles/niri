@@ -26,6 +26,7 @@ cursor {
 
 overview {
     zoom 0.5
+    workspace-anchor 0.5
     backdrop-color "#262626"
 
     workspace-shadow {
@@ -211,6 +212,20 @@ Control how much the workspaces zoom out in the overview.
 // Make workspaces four times smaller than normal in the overview.
 overview {
     zoom 0.25
+}
+```
+
+#### `workspace-anchor`
+
+<sup>Since: next release</sup>
+
+Set where the workspaces sit vertically in the overview.
+`workspace-anchor` ranges from 0 to 1, where 0 puts the active workspace at the top of the screen, 0.5 (the default) centers it, and 1 puts it at the bottom.
+
+```kdl
+// Keep the active workspace near the top, leaving room below it.
+overview {
+    workspace-anchor 0.15
 }
 ```
 
