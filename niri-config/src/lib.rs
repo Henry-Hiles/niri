@@ -2216,6 +2216,7 @@ mod tests {
                         a: 0.3137255,
                     },
                 },
+                swipe_to_close: false,
             },
             environment: Environment(
                 [

@@ -35,6 +35,8 @@ overview {
         offset x=0 y=10
         color "#00000050"
     }
+
+    // swipe-to-close
 }
 
 xwayland-satellite {
@@ -245,6 +247,22 @@ overview {
     workspace-shadow {
         off
     }
+}
+```
+
+#### `swipe-to-close`
+
+<sup>Since: next release</sup>
+
+Close windows in the overview by swiping them up on a touchscreen.
+The window follows the finger, and closes when released far enough or with enough speed.
+Otherwise, it moves back into place.
+
+When this is off, swiping up on a window switches workspaces, same as swiping up on empty space.
+
+```kdl
+overview {
+    swipe-to-close
 }
 ```
 

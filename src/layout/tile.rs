@@ -1,5 +1,6 @@
 use core::f64;
 use std::rc::Rc;
+use std::time::Duration;
 
 use niri_config::utils::MergeWith as _;
 use niri_config::{Color, CornerRadius, GradientInterpolation};
@@ -34,6 +35,9 @@ use crate::utils::transaction::Transaction;
 use crate::utils::{
     baba_is_float_offset, round_logical_in_physical, round_logical_in_physical_max1,
 };
+
+/// How long to wait for a window to close after swiping it away before moving it back.
+const SWIPE_CLOSE_TIMEOUT: Duration = Duration::from_secs(1);
 
 /// Toplevel window with decorations.
 #[derive(Debug)]
@@ -98,6 +102,14 @@ pub struct Tile<W: LayoutElement> {
 
     /// Offset during the initial interactive move rubberband.
     pub(super) interactive_move_offset: Point<f64, Logical>,
+
+    /// Vertical offset while the tile is swiped away to close it.
+    swipe_close_offset: f64,
+
+    /// When the window was asked to close after a swipe.
+    ///
+    /// If it's still around after a timeout, the tile moves back into place.
+    swipe_close_requested_at: Option<Duration>,
 
     /// Snapshot of the last render for use in the close animation.
     unmap_snapshot: Option<TileRenderSnapshot>,
@@ -211,6 +223,8 @@ impl<W: LayoutElement> Tile<W> {
             move_y_animation: None,
             alpha_animation: None,
             interactive_move_offset: Point::from((0., 0.)),
+            swipe_close_offset: 0.,
+            swipe_close_requested_at: None,
             unmap_snapshot: None,
             rounded_corner_damage: Default::default(),
             view_size,
@@ -447,10 +461,36 @@ impl<W: LayoutElement> Tile<W> {
                 self.alpha_animation = None;
             }
         }
+
+        if let Some(requested_at) = self.swipe_close_requested_at {
+            if self.clock.now() >= requested_at + SWIPE_CLOSE_TIMEOUT {
+                // The window didn't close, maybe it's asking for confirmation.
+                self.swipe_close_cancel();
+            }
+        }
     }
 
     pub fn are_animations_ongoing(&self) -> bool {
-        self.are_transitions_ongoing() || self.window.rules().baba_is_float == Some(true)
+        self.are_transitions_ongoing()
+            || self.window.rules().baba_is_float == Some(true)
+            || self.swipe_close_requested_at.is_some()
+    }
+
+    pub fn set_swipe_close_offset(&mut self, offset: f64) {
+        self.swipe_close_requested_at = None;
+        self.swipe_close_offset = offset;
+    }
+
+    pub fn swipe_close_requested(&mut self) {
+        self.swipe_close_requested_at = Some(self.clock.now());
+    }
+
+    pub fn swipe_close_cancel(&mut self) {
+        self.swipe_close_requested_at = None;
+        let offset = std::mem::take(&mut self.swipe_close_offset);
+        if offset != 0. {
+            self.animate_move_y_from(offset);
+        }
     }
 
     pub fn are_transitions_ongoing(&self) -> bool {
@@ -572,6 +612,7 @@ impl<W: LayoutElement> Tile<W> {
         }
 
         offset += self.interactive_move_offset;
+        offset.y += self.swipe_close_offset;
 
         offset
     }
