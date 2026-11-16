@@ -13,6 +13,7 @@ use smithay::input::{tablet, SeatHandler};
 use smithay::output::Output;
 use smithay::utils::{IsAlive, Logical, Point, SERIAL_COUNTER};
 
+use crate::input::swipe_tracker::SwipeTracker;
 use crate::input::AnyStartData;
 use crate::layout::workspace::{Workspace, WorkspaceId};
 use crate::niri::State;
@@ -31,6 +32,7 @@ pub struct TouchOverviewGrab {
     workspace_matched_narrow: bool,
     window: Option<Window>,
     gesture: GestureState,
+    swipe_close_tracker: SwipeTracker,
 
     // Accumulated and applied in frame().
     new_location: Point<f64, Logical>,
@@ -43,6 +45,7 @@ enum GestureState {
     ViewOffset,
     WorkspaceSwitch,
     InteractiveMove,
+    SwipeClose,
 }
 
 impl TouchOverviewGrab {
@@ -67,6 +70,7 @@ impl TouchOverviewGrab {
             workspace_matched_narrow,
             window,
             gesture: GestureState::Recognizing,
+            swipe_close_tracker: SwipeTracker::new(),
             new_location: location,
             event_timestamp: None,
         }
@@ -107,7 +111,12 @@ impl TouchOverviewGrab {
 
             // Check if the gesture moved far enough to decide. Threshold copied from libadwaita.
             if c.x * c.x + c.y * c.y >= 16. * 16. {
-                if let Some(ws_id) = self.workspace_id.filter(|_| c.x.abs() > c.y.abs()) {
+                let swipe_close = data.niri.config.borrow().overview.swipe_to_close;
+                if swipe_close && self.window.is_some() && -c.y > c.x.abs() {
+                    self.gesture = GestureState::SwipeClose;
+                    // Don't lose the movement made during recognition.
+                    self.last_location = self.start_data.location();
+                } else if let Some(ws_id) = self.workspace_id.filter(|_| c.x.abs() > c.y.abs()) {
                     if let Some((ws_idx, ws)) = layout.find_workspace_by_id(ws_id) {
                         if ws.current_output() == Some(&self.output) {
                             layout.view_offset_gesture_begin(&self.output, Some(ws_idx), false);
@@ -166,6 +175,12 @@ impl TouchOverviewGrab {
                     false
                 }
             }
+            GestureState::SwipeClose => {
+                self.swipe_close_tracker.push(delta.y, timestamp);
+                let offset = self.swipe_close_tracker.pos().min(0.);
+                layout.swipe_close_update(self.window.as_ref().unwrap(), offset);
+                true
+            }
         };
 
         if ongoing {
@@ -222,6 +237,15 @@ impl TouchOverviewGrab {
             }
             GestureState::InteractiveMove => {
                 layout.interactive_move_end(self.window.as_ref().unwrap());
+            }
+            GestureState::SwipeClose => {
+                let window = self.window.as_ref().unwrap();
+                let projected = self.swipe_close_tracker.projected_end_pos();
+                if layout.swipe_close_end(window, projected) {
+                    if let Some(toplevel) = window.toplevel() {
+                        toplevel.send_close();
+                    }
+                }
             }
         };
 
