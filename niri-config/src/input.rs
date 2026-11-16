@@ -390,6 +390,8 @@ pub struct Touch {
     pub calibration_matrix: Option<Vec<f32>>,
     #[knuffel(child, unwrap(argument))]
     pub map_to_output: Option<String>,
+    #[knuffel(child, unwrap(argument))]
+    pub edge_swipe_size: Option<FloatOrInt<0, 1000>>,
 }
 
 #[derive(knuffel::Decode, Debug, Clone, Copy, PartialEq)]
