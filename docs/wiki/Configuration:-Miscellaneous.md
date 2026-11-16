@@ -35,6 +35,8 @@ overview {
         offset x=0 y=10
         color "#00000050"
     }
+
+    // open-when-empty
 }
 
 xwayland-satellite {
@@ -245,6 +247,19 @@ overview {
     workspace-shadow {
         off
     }
+}
+```
+
+#### `open-when-empty`
+
+<sup>Since: next release</sup>
+
+Open the overview when the active workspace becomes empty, for example after closing its last window, and at startup.
+Closing the overview on an empty workspace keeps it closed until the workspace has had windows again.
+
+```kdl
+overview {
+    open-when-empty
 }
 ```
 
