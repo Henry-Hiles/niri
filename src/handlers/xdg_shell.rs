@@ -1034,6 +1034,15 @@ impl XdgDecorationHandler for State {
             }
         }
     }
+
+    fn decoration_destroyed(&mut self, toplevel: ToplevelSurface) {
+        // Smithay already reset the decoration mode, so just redraw.
+        let surface = toplevel.wl_surface();
+        if let Some((_, Some(output))) = self.niri.layout.find_window_and_output(surface) {
+            let output = output.clone();
+            self.niri.queue_redraw(&output);
+        }
+    }
 }
 
 /// Whether KDE server decorations are in use.
