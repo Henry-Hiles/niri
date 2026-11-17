@@ -124,6 +124,7 @@ pub struct Overview {
     pub workspace_anchor: f64,
     pub backdrop_color: Color,
     pub workspace_shadow: WorkspaceShadow,
+    pub hide_inactive_workspaces: bool,
 }
 
 impl Default for Overview {
@@ -133,6 +134,7 @@ impl Default for Overview {
             workspace_anchor: 0.5,
             backdrop_color: DEFAULT_BACKDROP_COLOR,
             workspace_shadow: WorkspaceShadow::default(),
+            hide_inactive_workspaces: false,
         }
     }
 }
@@ -147,12 +149,15 @@ pub struct OverviewPart {
     pub backdrop_color: Option<Color>,
     #[knuffel(child)]
     pub workspace_shadow: Option<WorkspaceShadowPart>,
+    #[knuffel(child)]
+    pub hide_inactive_workspaces: Option<Flag>,
 }
 
 impl MergeWith<OverviewPart> for Overview {
     fn merge_with(&mut self, part: &OverviewPart) {
         merge!((self, part), zoom, workspace_anchor, workspace_shadow);
         merge_clone!((self, part), backdrop_color);
+        merge!((self, part), hide_inactive_workspaces);
     }
 }
 

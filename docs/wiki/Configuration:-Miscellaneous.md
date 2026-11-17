@@ -36,6 +36,8 @@ overview {
         offset x=0 y=10
         color "#00000050"
     }
+
+    // hide-inactive-workspaces
 }
 
 xwayland-satellite {
@@ -260,6 +262,19 @@ overview {
     workspace-shadow {
         off
     }
+}
+```
+
+#### `hide-inactive-workspaces`
+
+<sup>Since: next release</sup>
+
+Show only the active workspace in the overview, instead of also showing the workspaces above and below it.
+Other workspaces still show up while switching to them.
+
+```kdl
+overview {
+    hide-inactive-workspaces
 }
 ```
 
