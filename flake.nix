@@ -14,7 +14,7 @@
       niri-package =
         {
           lib,
-          bash,
+          bashNonInteractive,
           cairo,
           dbus,
           libGL,
@@ -78,7 +78,7 @@
 
           buildInputs =
             [
-              bash # For niri-session
+              bashNonInteractive # For niri-session
               cairo
               dbus
               libGL
