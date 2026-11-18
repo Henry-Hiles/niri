@@ -44,6 +44,7 @@ use smithay::wayland::pointer_constraints::{with_pointer_constraint, PointerCons
 use smithay::wayland::shell::wlr_layer::{self, Layer};
 use smithay::wayland::virtual_keyboard::VirtualKeyboardDevice;
 use touch_edge_swipe_grab::TouchEdgeSwipeGrab;
+use touch_layer_swipe_exit_grab::TouchLayerSwipeExitGrab;
 use touch_overview_grab::TouchOverviewGrab;
 
 use self::move_grab::MoveGrab;
@@ -57,7 +58,7 @@ use crate::dbus::freedesktop_a11y::KbMonBlock;
 use crate::dbus::gnome_shell::GlobalShortcutsPortalBinds;
 use crate::layout::scrolling::ScrollDirection;
 use crate::layout::{ActivateWindow, LayoutElement as _};
-use crate::niri::{CastTarget, Niri, PointerVisibility, State};
+use crate::niri::{CastTarget, Niri, PointContents, PointerVisibility, State};
 use crate::ui::mru::{WindowMru, WindowMruUi};
 use crate::ui::screenshot_ui::ScreenshotUi;
 use crate::utils::spawning::{spawn, spawn_sh};
@@ -75,6 +76,7 @@ pub mod scroll_tracker;
 pub mod spatial_movement_grab;
 pub mod swipe_tracker;
 pub mod touch_edge_swipe_grab;
+pub mod touch_layer_swipe_exit_grab;
 pub mod touch_overview_grab;
 
 use backend_ext::{NiriInputBackend as InputBackend, NiriInputDevice as _};
@@ -4665,6 +4667,29 @@ impl State {
         (pos_within_output.y >= f64::from(output_geo.size.h) - size).then(|| output.clone())
     }
 
+    /// Returns the output if this touch can swipe down to exit the overview from a backdrop layer.
+    fn layer_swipe_exit_output(&self, under: &PointContents) -> Option<Output> {
+        if !self.niri.config.borrow().overview.swipe_down_to_exit
+            || !self.niri.layout.is_overview_open()
+        {
+            return None;
+        }
+
+        let mapped = self.niri.mapped_layer_surfaces.get(under.layer.as_ref()?)?;
+        if !mapped.place_within_backdrop() {
+            return None;
+        }
+
+        // There's nothing to exit to on an empty workspace, so leave the touch to the client.
+        let output = under.output.as_ref()?;
+        let mon = self.niri.layout.monitor_for_output(output)?;
+        if !mon.active_workspace_ref().has_windows() {
+            return None;
+        }
+
+        Some(output.clone())
+    }
+
     fn on_touch_down<I: InputBackend>(&mut self, evt: I::TouchDownEvent) {
         let Some(handle) = self.niri.seat.get_touch() else {
             return;
@@ -4729,6 +4754,14 @@ impl State {
                     location: pos,
                 };
                 handle.set_grab(self, TouchEdgeSwipeGrab::new(start_data, output), serial);
+            } else if let Some(output) = self.layer_swipe_exit_output(&under) {
+                let start_data = TouchGrabStartData {
+                    focus: None,
+                    slot,
+                    location: pos,
+                };
+                let grab = TouchLayerSwipeExitGrab::new(start_data, output);
+                handle.set_grab(self, grab, serial);
             } else if under.overview && !mod_down && under.output.is_some() {
                 let (output, pos_within_output) = self.niri.output_under(pos).unwrap();
                 let output = output.clone();

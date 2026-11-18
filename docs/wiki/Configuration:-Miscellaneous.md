@@ -303,6 +303,7 @@ overview {
 
 Close the overview by swiping down anywhere in it on a touchscreen.
 The overview closes following the finger, and moving sideways scrolls between windows at the same time, so you can pick which window to land on.
+This also works when starting on a layer surface [placed within the backdrop](./Configuration:-Layer-Rules.md#place-within-backdrop), such as an app grid: once the swipe is recognized as going down, the touch is taken away from the layer surface. It doesn't when the workspace is empty, since there's nothing to exit to.
 Releasing early or flicking back up keeps the overview open.
 
 When this is off, or on a workspace without windows, swiping down switches workspaces.
