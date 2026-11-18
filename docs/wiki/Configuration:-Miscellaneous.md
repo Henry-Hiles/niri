@@ -40,6 +40,7 @@ overview {
     // hide-inactive-workspaces
     // swipe-to-close
     // swipe-down-to-exit
+    // open-when-empty
 }
 
 xwayland-satellite {
@@ -309,6 +310,19 @@ When this is off, or on a workspace without windows, swiping down switches works
 ```kdl
 overview {
     swipe-down-to-exit
+}
+```
+
+#### `open-when-empty`
+
+<sup>Since: next release</sup>
+
+Open the overview when the active workspace becomes empty, for example after closing its last window, and at startup.
+Closing the overview on an empty workspace keeps it closed until the workspace has had windows again.
+
+```kdl
+overview {
+    open-when-empty
 }
 ```
 
