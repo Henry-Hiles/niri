@@ -5060,6 +5060,34 @@ impl<W: LayoutElement> Layout<W> {
     pub fn is_overview_open(&self) -> bool {
         self.overview_open
     }
+
+    fn tile_mut(&mut self, window: &W::Id) -> Option<&mut Tile<W>> {
+        self.workspaces_mut()
+            .find(|ws| ws.has_window(window))
+            .and_then(|ws| ws.tiles_mut().find(|tile| tile.window().id() == window))
+    }
+
+    pub fn swipe_close_update(&mut self, window: &W::Id, offset_y: f64) {
+        let zoom = self.overview_zoom();
+        if let Some(tile) = self.tile_mut(window) {
+            tile.set_swipe_close_offset(offset_y / zoom);
+        }
+    }
+
+    pub fn swipe_close_end(&mut self, window: &W::Id, projected_offset_y: f64) -> bool {
+        let zoom = self.overview_zoom();
+        let Some(tile) = self.tile_mut(window) else {
+            return false;
+        };
+
+        let close = -projected_offset_y / zoom > tile.tile_size().h / 2.;
+        if close {
+            tile.swipe_close_requested();
+        } else {
+            tile.swipe_close_cancel();
+        }
+        close
+    }
 }
 
 impl<W: LayoutElement> Default for MonitorSet<W> {
