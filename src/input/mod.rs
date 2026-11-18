@@ -710,6 +710,15 @@ impl State {
                     this.niri.cancel_interrupted_release_binds();
                 }
 
+                // Don't let the key press that woke the system up put it right back to sleep.
+                if pressed
+                    && modified == Some(Keysym::XF86_PowerOff)
+                    && this.niri.should_ignore_power_key()
+                {
+                    this.niri.suppressed_keys.insert(key_code);
+                    return ShouldInterceptResult::InterceptOnly;
+                }
+
                 let is_locked = this.niri.is_locked();
                 let is_in_screenshot = this.niri.screenshot_ui.is_open();
                 let res = {
