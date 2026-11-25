@@ -1519,16 +1519,31 @@ impl<W: LayoutElement> Monitor<W> {
         })
     }
 
+    /// Area that a workspace needs to intersect to be visible.
+    fn workspaces_visible_area(&self) -> Rectangle<f64, Logical> {
+        let output_geo = Rectangle::from_size(self.view_size);
+        if !self.options.overview.hide_inactive_workspaces {
+            return output_geo;
+        }
+
+        // Where the active workspace sits when not switching. Other workspaces only show up
+        // while moving through it.
+        let zoom = self.overview_zoom();
+        let mut geo = self.workspaces_render_geo().next().unwrap();
+        geo.loc.y += self.workspace_render_idx() * self.workspace_size_with_gap(zoom).h;
+        geo
+    }
+
     pub fn workspaces_with_render_geo_cull(
         &self,
         cull: bool,
     ) -> impl Iterator<Item = (&Workspace<W>, Rectangle<f64, Logical>)> {
-        let output_geo = Rectangle::from_size(self.view_size);
+        let visible_area = self.workspaces_visible_area();
 
         let geo = self.workspaces_render_geo();
         zip(self.workspaces.iter(), geo)
-            // Cull out workspaces outside the output.
-            .filter(move |(_ws, geo)| !cull || geo.intersection(output_geo).is_some())
+            // Cull out workspaces that aren't visible.
+            .filter(move |(_ws, geo)| !cull || geo.intersection(visible_area).is_some())
     }
 
     pub fn workspaces_with_render_geo(
@@ -1540,24 +1555,24 @@ impl<W: LayoutElement> Monitor<W> {
     pub fn workspaces_with_render_geo_idx(
         &self,
     ) -> impl Iterator<Item = ((usize, &Workspace<W>), Rectangle<f64, Logical>)> {
-        let output_geo = Rectangle::from_size(self.view_size);
+        let visible_area = self.workspaces_visible_area();
 
         let geo = self.workspaces_render_geo();
         zip(self.workspaces.iter().enumerate(), geo)
-            // Cull out workspaces outside the output.
-            .filter(move |(_ws, geo)| geo.intersection(output_geo).is_some())
+            // Cull out workspaces that aren't visible.
+            .filter(move |(_ws, geo)| geo.intersection(visible_area).is_some())
     }
 
     pub fn workspaces_with_render_geo_mut(
         &mut self,
         cull: bool,
     ) -> impl Iterator<Item = (&mut Workspace<W>, Rectangle<f64, Logical>)> {
-        let output_geo = Rectangle::from_size(self.view_size);
+        let visible_area = self.workspaces_visible_area();
 
         let geo = self.workspaces_render_geo();
         zip(self.workspaces.iter_mut(), geo)
-            // Cull out workspaces outside the output.
-            .filter(move |(_ws, geo)| !cull || geo.intersection(output_geo).is_some())
+            // Cull out workspaces that aren't visible.
+            .filter(move |(_ws, geo)| !cull || geo.intersection(visible_area).is_some())
     }
 
     pub fn workspace_under(
