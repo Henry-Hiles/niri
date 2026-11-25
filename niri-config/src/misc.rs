@@ -127,6 +127,7 @@ pub struct Overview {
     pub hide_inactive_workspaces: bool,
     pub swipe_to_close: bool,
     pub swipe_down_to_exit: bool,
+    pub open_when_empty: bool,
 }
 
 impl Default for Overview {
@@ -139,6 +140,7 @@ impl Default for Overview {
             hide_inactive_workspaces: false,
             swipe_to_close: false,
             swipe_down_to_exit: false,
+            open_when_empty: false,
         }
     }
 }
@@ -159,6 +161,8 @@ pub struct OverviewPart {
     pub swipe_to_close: Option<Flag>,
     #[knuffel(child)]
     pub swipe_down_to_exit: Option<Flag>,
+    #[knuffel(child)]
+    pub open_when_empty: Option<Flag>,
 }
 
 impl MergeWith<OverviewPart> for Overview {
@@ -167,6 +171,7 @@ impl MergeWith<OverviewPart> for Overview {
         merge_clone!((self, part), backdrop_color);
         merge!((self, part), hide_inactive_workspaces);
         merge!((self, part), swipe_to_close, swipe_down_to_exit);
+        merge!((self, part), open_when_empty);
     }
 }
 
