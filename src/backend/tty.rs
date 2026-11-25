@@ -756,6 +756,7 @@ impl Tty {
                 self.refresh_ipc_outputs(niri);
 
                 niri.notify_activity();
+                niri.suspending = false;
                 niri.monitors_active = true;
                 self.set_monitors_active(true);
                 niri.queue_redraw_all();
@@ -2078,11 +2079,14 @@ impl Tty {
         }
     }
 
-    pub fn suspend(&self) {
+    pub fn suspend(&self) -> bool {
         #[cfg(feature = "dbus")]
-        if let Err(err) = suspend() {
-            warn!("error suspending: {err:?}");
+        match suspend() {
+            Ok(()) => return true,
+            Err(err) => warn!("error suspending: {err:?}"),
         }
+
+        false
     }
 
     pub fn toggle_debug_tint(&mut self) {
