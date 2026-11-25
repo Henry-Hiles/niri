@@ -43,6 +43,7 @@ use smithay::wayland::keyboard_shortcuts_inhibit::KeyboardShortcutsInhibitor;
 use smithay::wayland::pointer_constraints::{with_pointer_constraint, PointerConstraint};
 use smithay::wayland::shell::wlr_layer::{self, Layer};
 use smithay::wayland::virtual_keyboard::VirtualKeyboardDevice;
+use touch_edge_swipe_grab::TouchEdgeSwipeGrab;
 use touch_layer_swipe_exit_grab::TouchLayerSwipeExitGrab;
 use touch_overview_grab::TouchOverviewGrab;
 
@@ -75,6 +76,7 @@ pub mod scroll_swipe_gesture;
 pub mod scroll_tracker;
 pub mod spatial_movement_grab;
 pub mod swipe_tracker;
+pub mod touch_edge_swipe_grab;
 pub mod touch_layer_swipe_exit_grab;
 pub mod touch_overview_grab;
 
@@ -4756,6 +4758,19 @@ impl State {
         self.compute_absolute_location(evt, self.niri.output_for_touch())
     }
 
+    /// Returns the output if a touch at `pos` starts in the bottom edge swipe zone.
+    fn touch_edge_swipe_output(&self, pos: Point<f64, Logical>) -> Option<Output> {
+        let size = self.niri.config.borrow().input.touch.edge_swipe_size?.0;
+        if size <= 0. || self.niri.is_locked() {
+            return None;
+        }
+
+        let (output, pos_within_output) = self.niri.output_under(pos)?;
+        let output_geo = self.niri.global_space.output_geometry(output)?;
+
+        (pos_within_output.y >= f64::from(output_geo.size.h) - size).then(|| output.clone())
+    }
+
     /// Returns the output if this touch can swipe down to exit the overview from a backdrop layer.
     fn layer_swipe_exit_output(&self, under: &PointContents) -> Option<Output> {
         if !self.niri.config.borrow().overview.swipe_down_to_exit
@@ -4835,7 +4850,14 @@ impl State {
                 }
             }
         } else if !handle.is_grabbed() {
-            if let Some(output) = self.layer_swipe_exit_output(&under) {
+            if let Some(output) = self.touch_edge_swipe_output(pos) {
+                let start_data = TouchGrabStartData {
+                    focus: None,
+                    slot,
+                    location: pos,
+                };
+                handle.set_grab(self, TouchEdgeSwipeGrab::new(start_data, output), serial);
+            } else if let Some(output) = self.layer_swipe_exit_output(&under) {
                 let start_data = TouchGrabStartData {
                     focus: None,
                     slot,

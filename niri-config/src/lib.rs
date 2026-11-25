@@ -1631,6 +1631,7 @@ mod tests {
                     map_to_output: Some(
                         "eDP-1",
                     ),
+                    edge_swipe_size: None,
                 },
                 disable_power_key_handling: true,
                 warp_mouse_to_focus: Some(
