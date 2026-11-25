@@ -35,6 +35,7 @@ layer-rule {
 
     geometry-corner-radius 12
     place-within-backdrop true
+    backdrop-input true
     focus-on-type-in-overview true
     baba-is-float true
 
@@ -204,8 +205,9 @@ layer-rule {
 
 Set to `true` to place the surface into the backdrop visible in the [Overview](./Overview.md) and between workspaces.
 
-This will only work for *background* layer surfaces that ignore exclusive zones (typical for wallpaper tools).
-Layers within the backdrop will ignore all input.
+This will only work for *background* and *bottom* layer surfaces that ignore exclusive zones (typical for wallpaper tools).
+Bottom layer surfaces go above background ones.
+Layers within the backdrop ignore all input, unless they have the [`backdrop-input`](#backdrop-input) rule.
 
 ```kdl
 // Put swaybg inside the overview backdrop.
@@ -213,6 +215,24 @@ layer-rule {
     match namespace="^wallpaper$"
 
     place-within-backdrop true
+}
+```
+
+#### `backdrop-input`
+
+<sup>Since: next release</sup>
+
+Set to `true` to let a surface placed within the backdrop receive input in the [Overview](./Overview.md), wherever no workspace is drawn on top of it.
+Outside the overview, it still ignores all input.
+
+This is meant for surfaces that sit behind the workspaces in the overview, such as an app grid.
+
+```kdl
+layer-rule {
+    match namespace="^launcher$"
+
+    place-within-backdrop true
+    backdrop-input true
 }
 ```
 
