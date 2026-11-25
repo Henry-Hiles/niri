@@ -174,10 +174,11 @@ impl TouchGrab<State> for TouchEdgeSwipeGrab {
     }
 
     fn frame(&mut self, data: &mut State, handle: &mut TouchInnerHandle<'_, State>) {
+        // Recognize first: smithay only sends the cancel while the frame is still pending.
+        self.on_frame(data, handle);
         if !self.is_active() {
             handle.frame(data);
         }
-        self.on_frame(data, handle);
     }
 
     fn cancel(&mut self, data: &mut State, handle: &mut TouchInnerHandle<'_, State>) {
