@@ -38,6 +38,8 @@ overview {
     }
 
     // hide-inactive-workspaces
+    // swipe-to-close
+    // swipe-down-to-exit
 }
 
 xwayland-satellite {
@@ -275,6 +277,38 @@ Other workspaces still show up while switching to them.
 ```kdl
 overview {
     hide-inactive-workspaces
+}
+```
+
+#### `swipe-to-close`
+
+<sup>Since: next release</sup>
+
+Close windows in the overview by swiping them up on a touchscreen.
+The window follows the finger, and closes when released far enough or with enough speed.
+Otherwise, it moves back into place.
+
+When this is off, swiping up on a window switches workspaces, same as swiping up on empty space.
+
+```kdl
+overview {
+    swipe-to-close
+}
+```
+
+#### `swipe-down-to-exit`
+
+<sup>Since: next release</sup>
+
+Close the overview by swiping down anywhere in it on a touchscreen.
+The overview closes following the finger, and moving sideways scrolls between windows at the same time, so you can pick which window to land on.
+Releasing early or flicking back up keeps the overview open.
+
+When this is off, or on a workspace without windows, swiping down switches workspaces.
+
+```kdl
+overview {
+    swipe-down-to-exit
 }
 ```
 

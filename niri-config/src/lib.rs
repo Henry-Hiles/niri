@@ -2218,6 +2218,8 @@ mod tests {
                     },
                 },
                 hide_inactive_workspaces: false,
+                swipe_to_close: false,
+                swipe_down_to_exit: false,
             },
             environment: Environment(
                 [

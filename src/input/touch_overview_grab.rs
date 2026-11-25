@@ -13,6 +13,7 @@ use smithay::input::{tablet, SeatHandler};
 use smithay::output::Output;
 use smithay::utils::{IsAlive, Logical, Point, SERIAL_COUNTER};
 
+use crate::input::swipe_tracker::SwipeTracker;
 use crate::input::AnyStartData;
 use crate::layout::workspace::{Workspace, WorkspaceId};
 use crate::niri::State;
@@ -31,6 +32,7 @@ pub struct TouchOverviewGrab {
     workspace_matched_narrow: bool,
     window: Option<Window>,
     gesture: GestureState,
+    swipe_close_tracker: SwipeTracker,
 
     // Accumulated and applied in frame().
     new_location: Point<f64, Logical>,
@@ -43,6 +45,8 @@ enum GestureState {
     ViewOffset,
     WorkspaceSwitch,
     InteractiveMove,
+    SwipeClose,
+    SwipeExit { view_offset: bool },
 }
 
 impl TouchOverviewGrab {
@@ -67,6 +71,7 @@ impl TouchOverviewGrab {
             workspace_matched_narrow,
             window,
             gesture: GestureState::Recognizing,
+            swipe_close_tracker: SwipeTracker::new(),
             new_location: location,
             event_timestamp: None,
         }
@@ -107,7 +112,26 @@ impl TouchOverviewGrab {
 
             // Check if the gesture moved far enough to decide. Threshold copied from libadwaita.
             if c.x * c.x + c.y * c.y >= 16. * 16. {
-                if let Some(ws_id) = self.workspace_id.filter(|_| c.x.abs() > c.y.abs()) {
+                let config = data.niri.config.borrow();
+                let swipe_close = config.overview.swipe_to_close;
+                // There's nothing to exit to on an empty workspace.
+                let swipe_exit = config.overview.swipe_down_to_exit
+                    && layout
+                        .monitor_for_output(&self.output)
+                        .is_some_and(|mon| mon.active_workspace_ref().has_windows());
+                drop(config);
+
+                if swipe_close && self.window.is_some() && -c.y > c.x.abs() {
+                    self.gesture = GestureState::SwipeClose;
+                    // Don't lose the movement made during recognition.
+                    self.last_location = self.start_data.location();
+                } else if swipe_exit && c.y > c.x.abs() {
+                    layout.focus_output(&self.output);
+                    layout.overview_gesture_begin();
+                    layout.view_offset_gesture_begin(&self.output, None, false);
+                    self.gesture = GestureState::SwipeExit { view_offset: true };
+                    self.last_location = self.start_data.location();
+                } else if let Some(ws_id) = self.workspace_id.filter(|_| c.x.abs() > c.y.abs()) {
                     if let Some((ws_idx, ws)) = layout.find_workspace_by_id(ws_id) {
                         if ws.current_output() == Some(&self.output) {
                             layout.view_offset_gesture_begin(&self.output, Some(ws_idx), false);
@@ -143,7 +167,7 @@ impl TouchOverviewGrab {
         let delta = self.new_location - self.last_location;
         self.last_location = self.new_location;
 
-        let ongoing = match self.gesture {
+        let ongoing = match &mut self.gesture {
             GestureState::Recognizing => unreachable!(),
             GestureState::ViewOffset => layout
                 .view_offset_gesture_update(-delta.x, timestamp, false)
@@ -165,6 +189,23 @@ impl TouchOverviewGrab {
                 } else {
                     false
                 }
+            }
+            GestureState::SwipeClose => {
+                self.swipe_close_tracker.push(delta.y, timestamp);
+                let offset = self.swipe_close_tracker.pos().min(0.);
+                layout.swipe_close_update(self.window.as_ref().unwrap(), offset);
+                true
+            }
+            GestureState::SwipeExit { view_offset } => {
+                let ongoing = layout
+                    .overview_gesture_update(-delta.y, timestamp)
+                    .is_some();
+                if *view_offset {
+                    *view_offset = layout
+                        .view_offset_gesture_update(-delta.x, timestamp, false)
+                        .is_some();
+                }
+                ongoing
             }
         };
 
@@ -222,6 +263,21 @@ impl TouchOverviewGrab {
             }
             GestureState::InteractiveMove => {
                 layout.interactive_move_end(self.window.as_ref().unwrap());
+            }
+            GestureState::SwipeClose => {
+                let window = self.window.as_ref().unwrap();
+                let projected = self.swipe_close_tracker.projected_end_pos();
+                if layout.swipe_close_end(window, projected) {
+                    if let Some(toplevel) = window.toplevel() {
+                        toplevel.send_close();
+                    }
+                }
+            }
+            GestureState::SwipeExit { view_offset } => {
+                if view_offset {
+                    layout.view_offset_gesture_end(Some(false));
+                }
+                layout.overview_gesture_end();
             }
         };
 
