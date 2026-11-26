@@ -191,6 +191,18 @@ impl State {
             if should_notify_activity(&event) {
                 self.niri.notify_activity();
             }
+        } else if self.niri.suspending && is_pointer_or_touch_activity(&event) {
+            // Don't let a stray touch wake the screen up while suspending. Other key presses still
+            // do, since they're deliberate.
+            return;
+        } else if self.niri.suspending && is_power_key_press(&event) {
+            // Pressing the power key again shouldn't turn the screen back on either. Once asleep
+            // though, the press is what woke the system up, and it may arrive before logind says
+            // so, so turn the monitors on once awake.
+            if self.niri.asleep {
+                self.niri.wake_monitors_on_resume = true;
+            }
+            return;
         } else {
             // Power on monitors if they were off.
             if should_activate_monitors(&event) {
@@ -952,7 +964,17 @@ impl State {
                 // released before suspending.
                 self.release_held_inputs(time);
 
-                self.backend.suspend();
+                // Blank the screen right away rather than leaving it on until the system sleeps.
+                let was_active = self.niri.monitors_active;
+                self.niri.deactivate_monitors(&mut self.backend);
+                self.niri.suspending = true;
+
+                if !self.backend.suspend() {
+                    self.niri.suspending = false;
+                    if was_active {
+                        self.niri.activate_monitors(&mut self.backend);
+                    }
+                }
             }
             Action::PowerKeySuspend => {
                 // Don't let the key press that woke the system up put it right back to sleep.
@@ -5487,6 +5509,33 @@ fn should_activate_monitors<I: InputBackend>(event: &InputEvent<I>) -> bool {
         // Ignore events like device additions and removals, key releases, gesture ends.
         _ => false,
     }
+}
+
+/// Pointer and touch events that would turn on the monitors. Releases aren't included so that
+/// input started before suspending still ends normally.
+fn is_pointer_or_touch_activity<I: InputBackend>(event: &InputEvent<I>) -> bool {
+    match event {
+        InputEvent::PointerButton { event } if event.state() == ButtonState::Pressed => true,
+        InputEvent::PointerMotion { .. }
+        | InputEvent::PointerMotionAbsolute { .. }
+        | InputEvent::PointerAxis { .. }
+        | InputEvent::GestureSwipeBegin { .. }
+        | InputEvent::GesturePinchBegin { .. }
+        | InputEvent::GestureHoldBegin { .. }
+        | InputEvent::TouchDown { .. }
+        | InputEvent::TouchMotion { .. }
+        | InputEvent::TabletToolAxis { .. }
+        | InputEvent::TabletToolProximity { .. }
+        | InputEvent::TabletToolTip { .. }
+        | InputEvent::TabletToolButton { .. } => true,
+        _ => false,
+    }
+}
+
+fn is_power_key_press<I: InputBackend>(event: &InputEvent<I>) -> bool {
+    // KEY_POWER, offset by 8 like all xkb keycodes.
+    matches!(event, InputEvent::Keyboard { event }
+        if event.state() == KeyState::Pressed && event.key_code().raw() == 124)
 }
 
 fn should_hide_hotkey_overlay<I: InputBackend>(event: &InputEvent<I>) -> bool {

@@ -130,11 +130,12 @@ impl Backend {
         }
     }
 
-    pub fn suspend(&mut self) {
+    /// Returns whether the suspend was requested.
+    pub fn suspend(&mut self) -> bool {
         match self {
             Backend::Tty(tty) => tty.suspend(),
-            Backend::Winit(_) => (),
-            Backend::Headless(_) => (),
+            Backend::Winit(_) => false,
+            Backend::Headless(_) => false,
         }
     }
 

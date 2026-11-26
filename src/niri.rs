@@ -299,6 +299,14 @@ pub struct Niri {
     /// Power key presses before this time get ignored. Set while asleep, and for a bit after
     /// waking up since the press that woke the system up may arrive after logind says it's awake.
     pub ignore_power_key_until: Option<Duration>,
+    /// Whether we turned off the monitors to suspend and haven't woken up yet. Touches and pointer
+    /// input are ignored meanwhile, so they don't turn the monitors back on before sleeping.
+    pub suspending: bool,
+    /// Whether logind said the system is going to sleep and it hasn't woken up yet.
+    pub asleep: bool,
+    /// Whether to turn on the monitors on waking up, because the power key was pressed while
+    /// asleep.
+    pub wake_monitors_on_resume: bool,
 
     /// Runtime toggle for touchpad disabled state (combined with config.touchpad.off).
     pub touchpad_disabled_by_toggle: bool,
@@ -2569,6 +2577,19 @@ impl State {
                     get_monotonic_time() + POWER_KEY_IGNORE_AFTER_WAKE
                 };
                 self.niri.ignore_power_key_until = Some(until);
+                self.niri.asleep = start;
+                if start {
+                    self.niri.wake_monitors_on_resume = false;
+                } else {
+                    // The monitors stay off until there's input, like after power-off-monitors,
+                    // but touches can wake them again.
+                    self.niri.suspending = false;
+
+                    if mem::take(&mut self.niri.wake_monitors_on_resume) {
+                        self.niri.activate_monitors(&mut self.backend);
+                        self.niri.notify_activity();
+                    }
+                }
             }
         }
     }
@@ -2920,6 +2941,9 @@ impl Niri {
             monitors_active: true,
             is_lid_closed: false,
             ignore_power_key_until: None,
+            suspending: false,
+            asleep: false,
+            wake_monitors_on_resume: false,
             touchpad_disabled_by_toggle: false,
 
             devices: HashSet::new(),
@@ -3477,6 +3501,7 @@ impl Niri {
             return;
         }
 
+        self.suspending = false;
         self.monitors_active = true;
         backend.set_monitors_active(true);
 
